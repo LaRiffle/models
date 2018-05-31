@@ -197,7 +197,7 @@ def Eval(mnist_data_file, network_parameters, num_testing_images,
     saver = tf.train.Saver()
     saver.restore(sess, ckpt_state.model_checkpoint_path)
     coord = tf.train.Coordinator()
-    _ = tf.train.start_queue_runners(sess=sess, coord=coord)
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
     total_examples = 0
     correct_predictions = 0
@@ -216,6 +216,9 @@ def Eval(mnist_data_file, network_parameters, num_testing_images,
                            "label": label_value,
                            "pred": np.argmax(prediction)})
         image_index += 1
+
+    coord.request_stop()
+    coord.join(threads)
 
   return (correct_predictions / total_examples,
           mistakes if save_mistakes else None)
@@ -273,7 +276,7 @@ def Train(mnist_train_file, mnist_test_file, network_parameters, num_steps,
     logits, projection, training_params = utils.BuildNetwork(
         images, network_parameters)
 
-    cost = tf.nn.softmax_cross_entropy_with_logits(
+    cost = tf.nn.softmax_cross_entropy_with_logits_v2(
         logits=logits, labels=tf.one_hot(labels, 10))
 
     # The actual cost is the average across the examples.
@@ -340,7 +343,7 @@ def Train(mnist_train_file, mnist_test_file, network_parameters, num_steps,
 
     saver = tf.train.Saver()
     coord = tf.train.Coordinator()
-    _ = tf.train.start_queue_runners(sess=sess, coord=coord)
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
     # We need to maintain the intialization sequence.
     for v in tf.trainable_variables():
@@ -432,7 +435,8 @@ def Train(mnist_train_file, mnist_test_file, network_parameters, num_steps,
 
       if should_terminate:
         break
-
+    coord.request_stop()
+    coord.join(threads)
 
 def main(_):
   network_parameters = utils.NetworkParameters()
